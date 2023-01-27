@@ -9,4 +9,5 @@ name = "pypi"
 
 [dev-packages]
 pytest = "*"
+pytest-asyncio = "*"
 pylint = "*"
