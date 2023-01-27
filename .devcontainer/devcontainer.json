@@ -1,0 +1,4 @@
+{
+	"name": "streamz",
+	"image": "mcr.microsoft.com/vscode/devcontainers/python"
+}

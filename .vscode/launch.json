@@ -1,0 +1,33 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Run Demo Sandbox",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/demo/sandbox.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "autoReload": { "enable": true },
+        },
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "autoReload": { "enable": true }
+        },
+        {
+            "name": "Python: Debug Test File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "purpose": ["debug-test"],
+            "autoReload": { "enable": true },
+        }
+    ]
+}

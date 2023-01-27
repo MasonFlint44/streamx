@@ -1,0 +1,40 @@
+{
+    "python.defaultInterpreterPath": "/home/codespace/.local/share/virtualenvs/streamz-vdSpMA1q/bin/python",
+    "python.terminal.activateEnvironment": true,
+    "python.analysis.typeCheckingMode": "basic",
+    "python.testing.pytestEnabled": true,
+    "python.testing.pytestArgs": [
+        "tests", "-vv", "-s"
+    ],
+    "python.testing.pytestPath": "/home/codespace/.local/share/virtualenvs/streamz-vdSpMA1q/bin/pytest",
+    "python.testing.unittestEnabled": false,
+    "python.formatting.provider": "black",
+    "python.formatting.blackArgs": [
+        "--line-length",
+        "100"
+    ],
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": true,
+    "python.linting.pylintPath": "/home/codespace/.local/share/virtualenvs/streamz-vdSpMA1q/bin/pylint",
+    "python.linting.pylintArgs": [
+        "--init-hook",
+        "import sys; sys.path.append('.')",
+        "--disable=missing-module-docstring",
+        "--disable=missing-class-docstring",
+        "--disable=missing-function-docstring"
+    ],
+    "[python]": {
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": true
+        }
+    },
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/.pytest_cache": true,
+        "**/.mypy_cache": true,
+        "**/.coverage": true,
+        "**/.cache": true,
+        "**/.git": true,
+    }
+}
