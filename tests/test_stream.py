@@ -4,6 +4,18 @@ import pytest
 
 from streamz import AsyncStream
 
+# TODO - scenarios to test:
+# The behavior of push() when called after close() has been called
+# The behavior of push() when called with a value that is not of the specified type
+# The behavior of __aiter__() when called multiple times on the same stream object
+# The behavior of __aiter__() when called after close() has been called
+# The behavior of __anext__() when called after close() has been called
+# The behavior of __anext__() when called on a stream that has no items pushed to it
+# The behavior of __anext__() when called after all items have been consumed
+# The behavior of __anext__() when called before an item has been pushed
+# The behavior of __anext__() when called on a stream that has been closed and has no items left to be consumed
+# The behavior of __anext__() when called on a stream that has been closed and has items left to be consumed.
+
 
 @pytest.mark.asyncio
 async def test_push_and_consume():
