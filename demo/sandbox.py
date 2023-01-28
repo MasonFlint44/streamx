@@ -3,28 +3,25 @@ import asyncio
 from streamz import AsyncStream
 
 # TODO: need to write github actions to build and deploy to pypi
-stream = AsyncStream()
 
 
-async def producer1():
-    for i in range(10):
+async def sender(stream: AsyncStream[int]) -> None:
+    for i in range(5):
+        await asyncio.sleep(1)
         await stream.push(i)
     await stream.close()
 
 
-async def producer2():
-    for i in range(10, 20):
-        await stream.push(i)
-    await stream.close()
-
-
-async def consumer():
+async def receiver(stream: AsyncStream[int]) -> None:
     async for item in stream:
-        print(f"Consumer 1: {item}")
+        print(f"received: {item}")
+        await asyncio.sleep(1)
 
 
+# Start sender and receiver tasks
 async def main():
-    await asyncio.gather(producer1(), consumer(), producer2())
+    stream = AsyncStream()
+    await asyncio.gather(sender(stream), receiver(stream))
 
 
 asyncio.run(main(), debug=True)

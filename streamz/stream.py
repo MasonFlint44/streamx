@@ -27,6 +27,8 @@ class AsyncStream(AsyncIterator[T], Generic[T], AsyncIterable[T]):
         await self._queue.put(item)
 
     async def close(self) -> None:
+        if self._closed:
+            return
         await self.push(StopAsyncIteration)  # type: ignore
         self._closed = True
 
