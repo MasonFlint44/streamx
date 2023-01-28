@@ -3,7 +3,7 @@ import time
 
 import pytest
 
-from streamz import AsyncStream
+from streamz import AsyncStream, StreamClosedError, StreamConsumerError, StreamShortCircuitError
 
 
 @pytest.mark.asyncio
@@ -50,7 +50,7 @@ async def test_push_from_same_task_inside_async_for_loop_raises_error():
 
     async def consumer():
         async for _ in stream:
-            with pytest.raises(RuntimeError):
+            with pytest.raises(StreamShortCircuitError):
                 await stream.push(456)
 
     await asyncio.gather(consumer(), stream.close())
@@ -61,7 +61,7 @@ async def test_push_after_close_raises_error():
     stream: AsyncStream[int] = AsyncStream()
     await stream.close()
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(StreamClosedError):
         await stream.push(123)
 
 
@@ -70,7 +70,7 @@ async def test_iterate_after_close_raises_error():
     stream: AsyncStream[int] = AsyncStream()
     await stream.close()
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(StreamClosedError):
         async for _ in stream:
             pass
 
@@ -84,7 +84,7 @@ async def test_multiple_consumers_raises_error():
             pass
 
     async def consumer2():
-        with pytest.raises(RuntimeError):
+        with pytest.raises(StreamConsumerError):
             async for _ in stream:
                 pass
 

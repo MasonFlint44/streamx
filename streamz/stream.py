@@ -2,6 +2,8 @@ import asyncio
 from collections.abc import AsyncIterable, AsyncIterator
 from typing import Generic, TypeVar
 
+from . import StreamClosedError, StreamConsumerError, StreamShortCircuitError
+
 T = TypeVar("T")
 
 # TODO: push_many()?
@@ -16,12 +18,12 @@ class AsyncStream(AsyncIterator[T], Generic[T], AsyncIterable[T]):
 
     async def push(self, item: T) -> None:
         if self._closed:
-            # TODO: raise a more specific error - StreamClosedError?
-            raise RuntimeError("Can't push item into a closed stream.")
+            raise StreamClosedError("Can't push item into a closed stream.")
         current_task = asyncio.current_task()
         if self._consuming_task == current_task:
-            # TODO: raise a more specific error - StreamShortCircuitError?
-            raise RuntimeError("Can't push item while stream is being consumed by the same task")
+            raise StreamShortCircuitError(
+                "Can't push item while stream is being consumed by the same task"
+            )
         await self._queue.put(item)
 
     async def close(self) -> None:
@@ -30,11 +32,9 @@ class AsyncStream(AsyncIterator[T], Generic[T], AsyncIterable[T]):
 
     def __aiter__(self) -> "AsyncStream[T]":
         if self._closed:
-            # TODO: raise a more specific error - StreamClosedError?
-            raise RuntimeError("Can't iterate over a closed stream.")
+            raise StreamClosedError("Can't iterate over a closed stream.")
         if self._consuming_task is not None:
-            # TODO: raise a more specific error - StreamConsumerError?
-            raise RuntimeError("Stream is already being consumed by another task.")
+            raise StreamConsumerError("Stream is already being consumed by another task.")
         self._consuming_task = asyncio.current_task()
         return self
 
