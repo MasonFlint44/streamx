@@ -4,31 +4,46 @@ from typing import Generic, TypeVar
 
 T = TypeVar("T")
 
-# TODO: if stream is closed, should we raise an error when trying to push items?
-# TODO: if stream is closed, should we raise an error when trying to iterate over it?
+# TODO: push_many()?
+# TODO: push_nowait()?
+
+
 class AsyncStream(AsyncIterator[T], Generic[T], AsyncIterable[T]):
-    def __init__(self) -> None:
-        self._queue: asyncio.Queue[T] = asyncio.Queue()
+    def __init__(self, backpressure: bool = True, buffer_size=1) -> None:
+        self._queue: asyncio.Queue[T] = asyncio.Queue(maxsize=buffer_size if backpressure else 0)
         self._consuming_task: asyncio.Task | None = None
+        self._closed: bool = False
 
     async def push(self, item: T) -> None:
+        if self._closed:
+            # TODO: raise a more specific error - StreamClosedError?
+            raise RuntimeError("Can't push item into a closed stream.")
         current_task = asyncio.current_task()
         if self._consuming_task == current_task:
+            # TODO: raise a more specific error - StreamShortCircuitError?
             raise RuntimeError("Can't push item while stream is being consumed by the same task")
         await self._queue.put(item)
 
     async def close(self) -> None:
         await self.push(StopAsyncIteration)  # type: ignore
+        self._closed = True
 
     def __aiter__(self) -> "AsyncStream[T]":
+        if self._closed:
+            # TODO: raise a more specific error - StreamClosedError?
+            raise RuntimeError("Can't iterate over a closed stream.")
         if self._consuming_task is not None:
+            # TODO: raise a more specific error - StreamConsumerError?
             raise RuntimeError("Stream is already being consumed by another task.")
         self._consuming_task = asyncio.current_task()
         return self
 
     async def __anext__(self) -> T:
-        item = await self._queue.get()
-        if item is StopAsyncIteration:
-            self._consuming_task = None
-            raise StopAsyncIteration
-        return item
+        try:
+            item = await self._queue.get()
+            if item is StopAsyncIteration:
+                self._consuming_task = None
+                raise StopAsyncIteration
+            return item
+        finally:
+            self._queue.task_done()

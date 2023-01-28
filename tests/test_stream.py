@@ -1,20 +1,9 @@
 import asyncio
+import time
 
 import pytest
 
 from streamz import AsyncStream
-
-# TODO - scenarios to test:
-# The behavior of push() when called after close() has been called
-# The behavior of push() when called with a value that is not of the specified type
-# The behavior of __aiter__() when called multiple times on the same stream object
-# The behavior of __aiter__() when called after close() has been called
-# The behavior of __anext__() when called after close() has been called
-# The behavior of __anext__() when called on a stream that has no items pushed to it
-# The behavior of __anext__() when called after all items have been consumed
-# The behavior of __anext__() when called before an item has been pushed
-# The behavior of __anext__() when called on a stream that has been closed and has no items left to be consumed
-# The behavior of __anext__() when called on a stream that has been closed and has items left to be consumed.
 
 
 @pytest.mark.asyncio
@@ -22,9 +11,11 @@ async def test_push_and_consume():
     stream: AsyncStream[int] = AsyncStream()
 
     async def producer():
-        for i in range(10):
-            await stream.push(i)
-        await stream.close()
+        try:
+            for i in range(10):
+                await stream.push(i)
+        finally:
+            await stream.close()
 
     async def consumer():
         items = []
@@ -32,50 +23,146 @@ async def test_push_and_consume():
             items.append(item)
         return items
 
-    asyncio.create_task(producer())
-    result = await consumer()
-    assert result == list(range(10))
+    _, items = await asyncio.gather(producer(), consumer())
+    assert items == list(range(10))
 
 
 @pytest.mark.asyncio
-async def test_push_from_same_task_raises_error():
+async def test_push_from_same_task_outside_async_for_loop_works():
     stream: AsyncStream[int] = AsyncStream()
 
-    async def producer():
-        for i in range(10):
-            await stream.push(i)
-        await stream.close()
+    async def consumer():
+        await stream.push(123)
+
+        items = []
+        async for item in stream:
+            items.append(item)
+        return items
+
+    items, _ = await asyncio.gather(consumer(), stream.close())
+    assert 123 in items
+
+
+@pytest.mark.asyncio
+async def test_push_from_same_task_inside_async_for_loop_raises_error():
+    stream: AsyncStream[int] = AsyncStream()
+    await stream.push(123)
 
     async def consumer():
         async for _ in stream:
             with pytest.raises(RuntimeError):
-                await stream.push(123)
+                await stream.push(456)
 
-    asyncio.create_task(producer())
-    consumer_task = asyncio.create_task(consumer())
-    await consumer_task
+    await asyncio.gather(consumer(), stream.close())
+
+
+@pytest.mark.asyncio
+async def test_push_after_close_raises_error():
+    stream: AsyncStream[int] = AsyncStream()
+    await stream.close()
+
+    with pytest.raises(RuntimeError):
+        await stream.push(123)
+
+
+@pytest.mark.asyncio
+async def test_iterate_after_close_raises_error():
+    stream: AsyncStream[int] = AsyncStream()
+    await stream.close()
+
+    with pytest.raises(RuntimeError):
+        async for _ in stream:
+            pass
 
 
 @pytest.mark.asyncio
 async def test_multiple_consumers_raises_error():
     stream = AsyncStream()
 
-    async def producer():
-        for i in range(10):
-            await stream.push(i)
-        await stream.close()
-
     async def consumer1():
-        items = []
-        async for item in stream:
-            items.append(item)
-        return items
+        async for _ in stream:
+            pass
 
     async def consumer2():
         with pytest.raises(RuntimeError):
             async for _ in stream:
                 pass
 
-    asyncio.create_task(producer())
-    asyncio.create_task(consumer1())
-    asyncio.create_task(consumer2())
+    await asyncio.gather(consumer1(), consumer2(), stream.close())
+
+
+@pytest.mark.asyncio
+async def test_backpressure():
+    stream = AsyncStream(backpressure=True)
+
+    async def producer():
+        try:
+            start_time = time.perf_counter_ns()
+            for i in range(10):
+                await stream.push(i)
+            end_time = time.perf_counter_ns()
+            return (end_time - start_time) / 1_000_000_000
+        finally:
+            asyncio.create_task(stream.close())
+
+    async def consumer():
+        async for _ in stream:
+            await asyncio.sleep(0.1)
+
+    producer_duration, _ = await asyncio.gather(
+        producer(),
+        consumer(),
+    )
+    assert producer_duration >= 0.8
+    assert producer_duration < 0.9
+
+
+@pytest.mark.asyncio
+async def test_backpressure_can_be_disabled():
+    stream = AsyncStream(backpressure=False)
+
+    async def producer():
+        try:
+            start_time = time.perf_counter_ns()
+            for i in range(10):
+                await stream.push(i)
+            end_time = time.perf_counter_ns()
+            return (end_time - start_time) / 1_000_000_000
+        finally:
+            asyncio.create_task(stream.close())
+
+    async def consumer():
+        async for _ in stream:
+            await asyncio.sleep(0.1)
+
+    producer_duration, _ = await asyncio.gather(
+        producer(),
+        consumer(),
+    )
+    assert producer_duration < 0.1
+
+
+@pytest.mark.asyncio
+async def test_backpressure_with_buffered_items():
+    stream = AsyncStream(backpressure=True, buffer_size=5)
+
+    async def producer():
+        try:
+            start_time = time.perf_counter_ns()
+            for i in range(10):
+                await stream.push(i)
+            end_time = time.perf_counter_ns()
+            return (end_time - start_time) / 1_000_000_000
+        finally:
+            asyncio.create_task(stream.close())
+
+    async def consumer():
+        async for _ in stream:
+            await asyncio.sleep(0.1)
+
+    producer_duration, _ = await asyncio.gather(
+        producer(),
+        consumer(),
+    )
+    assert producer_duration >= 0.4
+    assert producer_duration < 0.5
