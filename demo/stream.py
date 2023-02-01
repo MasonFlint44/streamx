@@ -2,6 +2,8 @@ import asyncio
 
 from streamz import AsyncStream
 
+# TODO: need to write github actions to build and deploy to pypi
+
 
 async def sender(stream: AsyncStream[int]) -> None:
     for i in range(5):

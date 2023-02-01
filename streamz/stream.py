@@ -12,6 +12,7 @@ T = TypeVar("T")
 
 class AsyncStream(AsyncIterator[T], Generic[T], AsyncIterable[T]):
     def __init__(self, backpressure: bool = True, buffer_size=1) -> None:
+        # TODO: can we swap out the queue with a future?
         self._queue: asyncio.Queue[T] = asyncio.Queue(maxsize=buffer_size if backpressure else 0)
         self._consuming_task: asyncio.Task | None = None
         self._closed: bool = False

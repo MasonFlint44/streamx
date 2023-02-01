@@ -1,4 +1,24 @@
 {
 	"name": "streamz",
-	"image": "mcr.microsoft.com/vscode/devcontainers/python"
+	"image": "mcr.microsoft.com/vscode/devcontainers/python",
+	"remoteEnv": {
+		"PYENV_VERSION": "3.11.1"
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"njpwerner.autodocstring",
+				"bungcip.better-toml",
+				"donjayamanne.githistory",
+				"GitHub.copilot",
+				"GitHub.copilot-labs",
+				"eamodio.gitlens",
+				"mutantdino.resourcemonitor",
+				"Gruntfuggly.todo-tree",
+				"ms-python.python",
+				"DavidAnson.vscode-markdownlint",
+				"shd101wyy.markdown-preview-enhanced"
+			]
+		}
+	}
 }
