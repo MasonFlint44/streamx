@@ -78,8 +78,11 @@ async def test_shared_event_share():
 
 @pytest.mark.asyncio
 async def test_share_listen_and_wait():
-    async def listener(event: SharedEvent[str], message_count: int) -> None:
+    listeners_started = [asyncio.Event() for _ in range(3)]
+
+    async def listener(event: SharedEvent[str], message_count: int, started: asyncio.Event) -> None:
         with event.listen() as listener:
+            started.set()
             for _ in range(message_count):
                 value = await listener.wait()
 
@@ -93,14 +96,13 @@ async def test_share_listen_and_wait():
 
     # Start receiver tasks
     tasks = [
-        asyncio.create_task(listener(event, 3)),
-        asyncio.create_task(listener(event, 3)),
-        asyncio.create_task(listener(event, 3)),
+        asyncio.create_task(listener(event, queue.qsize(), listeners_started[0])),
+        asyncio.create_task(listener(event, queue.qsize(), listeners_started[1])),
+        asyncio.create_task(listener(event, queue.qsize(), listeners_started[2])),
     ]
 
-    # TODO: Find a better way to wait for receivers to start
     # Wait for receivers to start
-    await asyncio.sleep(0)
+    await asyncio.gather(*[event.wait() for event in listeners_started])
 
     # Send events
     value = await event.share(queue.get())
