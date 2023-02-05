@@ -4,15 +4,7 @@ class StreamError(Exception):
 
 class StreamClosedError(StreamError):
     """
-    Raised when a stream is closed and a new item is pushed
-    or when a stream is iterated over after it is closed
-    """
-
-
-class StreamConsumerError(StreamError):
-    """
-    Raised when a task tries to iterate over a stream that is
-    already being consumed by another task
+    Raised when operations are performed on a closed stream
     """
 
 

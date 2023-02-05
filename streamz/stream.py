@@ -1,9 +1,9 @@
 import asyncio
 from collections.abc import AsyncIterable, AsyncIterator
-from typing import ContextManager, Generic, TypeVar
+from contextlib import contextmanager
+from typing import Generic, Iterator, TypeVar
 
-from . import StreamClosedError, StreamConsumerError, StreamShortCircuitError
-from .event import SharedEvent, SharedEventListener
+from . import SharedEvent, SharedEventListener, StreamClosedError, StreamShortCircuitError
 
 T = TypeVar("T")
 
@@ -12,9 +12,8 @@ T = TypeVar("T")
 
 
 class AsyncStreamIterator(AsyncIterator[T], Generic[T], AsyncIterable[T]):
-    def __init__(self, listener_context: ContextManager[SharedEventListener[T]]) -> None:
-        self._listener_context = listener_context
-        self._event_listener = listener_context.__enter__()
+    def __init__(self, event_listener: SharedEventListener[T]) -> None:
+        self._event_listener = event_listener
 
     async def __anext__(self) -> T:
         item = await self._event_listener.wait()
@@ -22,8 +21,29 @@ class AsyncStreamIterator(AsyncIterator[T], Generic[T], AsyncIterable[T]):
             raise StopAsyncIteration
         return item
 
-    def close(self) -> None:
-        self._listener_context.__exit__(None, None, None)
+
+class AsyncStreamListener(Generic[T]):
+    def __init__(self, event_listener: SharedEventListener[T]) -> None:
+        self._event_listener = event_listener
+        self._current_task = asyncio.current_task()
+        self._closed = False
+
+    @property
+    def current_task(self) -> asyncio.Task | None:
+        return self._current_task
+
+    @property
+    def closed(self) -> bool:
+        return self._closed
+
+    @closed.setter
+    def closed(self, value: bool) -> None:
+        self._closed = value
+
+    def __aiter__(self) -> AsyncStreamIterator[T]:
+        if self._closed:
+            raise StreamClosedError("Can't iterate over a closed stream.")
+        return AsyncStreamIterator(self._event_listener)
 
 
 # TODO: should this queue up items if no one is listening?
@@ -32,15 +52,18 @@ class AsyncStream(Generic[T]):
         self._consuming_tasks: list[asyncio.Task] = []
         self._closed: bool = False
         self._event = SharedEvent[T]()
+        self._listeners = set[AsyncStreamListener[T]]()
+
+    @property
+    def listeners(self) -> set[AsyncStreamListener[T]]:
+        return self._listeners
 
     async def push(self, item: T) -> None:
         if self._closed:
             raise StreamClosedError("Can't push item into a closed stream.")
         current_task = asyncio.current_task()
         if current_task in self._consuming_tasks:
-            raise StreamShortCircuitError(
-                "Can't push item while stream is being consumed by the same task"
-            )
+            raise StreamShortCircuitError("Can't push item while task is listening to this stream.")
         await self._event.share(asyncio.sleep(0, result=item))
 
     async def close(self) -> None:
@@ -48,16 +71,25 @@ class AsyncStream(Generic[T]):
             return
         await self.push(StopAsyncIteration)  # type: ignore
         self._closed = True
+        for listener in self._listeners:
+            listener.closed = True
 
-    def __aiter__(self) -> AsyncStreamIterator[T]:
+    @contextmanager
+    def listen(self) -> Iterator[AsyncStreamListener[T]]:
         if self._closed:
-            raise StreamClosedError("Can't iterate over a closed stream.")
-        iterator = AsyncStreamIterator(self._event.listen())
+            raise StreamClosedError("Can't listen to a closed stream.")
         current_task = asyncio.current_task()
-        if current_task:
-            self._consuming_tasks.append(current_task)
-            # TODO: is there a better way to track when listeners exit the async for loop?
-            # - this doesn't really really track when the loop exits, just when the task is done
-            # - context manager could be used, but I'd rather not have to futher nest all of the consumer code
-            current_task.add_done_callback(lambda _: iterator.close())
-        return iterator
+        if current_task in self._consuming_tasks:
+            raise StreamShortCircuitError("Task is already listening to this stream.")
+
+        listener = None
+        try:
+            with self._event.listen() as event_listener:
+                listener = AsyncStreamListener(event_listener)
+                self._listeners.add(listener)
+                if listener.current_task:
+                    self._consuming_tasks.append(listener.current_task)
+                yield listener
+        finally:
+            if listener:
+                self._listeners.remove(listener)

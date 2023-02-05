@@ -11,8 +11,9 @@ async def sender(stream: AsyncStream[int]) -> None:
 
 
 async def receiver(stream: AsyncStream[int]) -> None:
-    async for item in stream:
-        print(f"received: {item}")
+    with stream.listen() as listener:
+        async for item in listener:
+            print(f"received: {item}")
 
 
 # Start sender and receiver tasks
