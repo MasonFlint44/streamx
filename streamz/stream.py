@@ -36,9 +36,8 @@ class AsyncStreamListener(Generic[T]):
     def closed(self) -> bool:
         return self._closed
 
-    @closed.setter
-    def closed(self, value: bool) -> None:
-        self._closed = value
+    def close(self) -> None:
+        self._closed = True
 
     def __aiter__(self) -> AsyncStreamIterator[T]:
         if self._closed:
@@ -58,6 +57,10 @@ class AsyncStream(Generic[T]):
     def listeners(self) -> set[AsyncStreamListener[T]]:
         return self._listeners
 
+    @property
+    def closed(self) -> bool:
+        return self._closed
+
     async def push(self, item: T) -> None:
         if self._closed:
             raise StreamClosedError("Can't push item into a closed stream.")
@@ -72,7 +75,7 @@ class AsyncStream(Generic[T]):
         await self.push(StopAsyncIteration)  # type: ignore
         self._closed = True
         for listener in self._listeners:
-            listener.closed = True
+            listener.close()
 
     @contextmanager
     def listen(self) -> Iterator[AsyncStreamListener[T]]:
@@ -92,4 +95,5 @@ class AsyncStream(Generic[T]):
                 yield listener
         finally:
             if listener:
+                listener.close()
                 self._listeners.remove(listener)
