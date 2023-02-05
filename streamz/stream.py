@@ -66,13 +66,20 @@ class AsyncStream(Generic[T]):
             raise StreamClosedError("Can't push item into a closed stream.")
         current_task = asyncio.current_task()
         if current_task in self._consuming_tasks:
-            raise StreamShortCircuitError("Can't push item while task is listening to this stream.")
-        await self._event.share(asyncio.sleep(0, result=item))
+            raise StreamShortCircuitError(
+                "Can't push an item while the task is listening to this stream."
+            )
+        await self._event.share(asyncio.sleep(0, item))
 
     async def close(self) -> None:
         if self._closed:
             return
-        await self.push(StopAsyncIteration)  # type: ignore
+        try:
+            await self.push(StopAsyncIteration)  # type: ignore
+        except StreamShortCircuitError:
+            raise StreamShortCircuitError(
+                "Can't close a stream from a task that is listening to it."
+            ) from None
         self._closed = True
         for listener in self._listeners:
             listener.close()
@@ -97,3 +104,5 @@ class AsyncStream(Generic[T]):
             if listener:
                 listener.close()
                 self._listeners.remove(listener)
+                if listener.current_task:
+                    self._consuming_tasks.remove(listener.current_task)
