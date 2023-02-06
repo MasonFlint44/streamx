@@ -1,6 +1,6 @@
 # Streamx
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![PyPI - License](https://img.shields.io/pypi/l/streamx?style=for-the-badge) ![PyPI](https://img.shields.io/pypi/v/streamx?style=for-the-badge)
 
 The simple solution for sharing async data streams in Python.
 
