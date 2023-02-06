@@ -4,7 +4,7 @@ from contextlib import ExitStack
 
 import pytest
 
-from streamz import (
+from streamx import (
     AsyncStream,
     AsyncStreamIterator,
     AsyncStreamListener,

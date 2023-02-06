@@ -1,5 +1,5 @@
 class StreamError(Exception):
-    """Base class for all streamz exceptions"""
+    """Base class for all streamx exceptions"""
 
 
 class StreamClosedError(StreamError):

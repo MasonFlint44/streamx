@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from streamz import SharedEvent, SharedEventListener
+from streamx import SharedEvent, SharedEventListener
 
 
 @pytest.mark.asyncio

@@ -1,6 +1,6 @@
 import asyncio
 
-from streamz import SharedEvent
+from streamx import SharedEvent
 
 
 async def receiver1(event: SharedEvent, message_count: int) -> None:

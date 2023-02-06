@@ -1,6 +1,6 @@
 import asyncio
 
-from streamz import AsyncStream
+from streamx import AsyncStream
 
 
 async def sender(stream: AsyncStream[int]) -> None:

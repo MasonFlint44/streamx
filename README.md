@@ -1,11 +1,11 @@
-# Streamz
+# Streamx
 
-Streamz is an asyncio-compatible package for creating and consuming streams of data.
+Streamx is an asyncio-compatible package for creating and consuming streams of data.
 
 ## Installation
 
 ```bash
-pip install streamz
+pip install streamx
 ```
 
 ## Usage
@@ -13,7 +13,7 @@ pip install streamz
 ### Creating a Stream
 
 ```python
-from streamz import AsyncStream
+from streamx import AsyncStream
 
 stream = AsyncStream()
 ```
@@ -53,7 +53,7 @@ Also, if you try to consume a stream with more than one consumer, a `RuntimeErro
 
 ```python
 import asyncio
-from streamz import AsyncStream
+from streamx import AsyncStream
 
 async def main():
     stream = AsyncStream()

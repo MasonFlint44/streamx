@@ -1,6 +1,6 @@
 import asyncio
 
-from streamz import AsyncStream
+from streamx import AsyncStream
 
 # TODO: need to write github actions to build and deploy to pypi
 
