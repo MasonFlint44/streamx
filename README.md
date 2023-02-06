@@ -1,4 +1,4 @@
-# Streamx
+# streamx
 
 ![PyPI - License](https://img.shields.io/pypi/l/streamx?style=for-the-badge) ![PyPI](https://img.shields.io/pypi/v/streamx?style=for-the-badge)
 
