@@ -3,24 +3,22 @@ import asyncio
 from streamx import AsyncStream
 
 
-async def sender(stream: AsyncStream[int]) -> None:
+async def producer(stream: AsyncStream[int]):
     for i in range(5):
-        await asyncio.sleep(1)
         await stream.push(i)
+        await asyncio.sleep(1)
     await stream.close()
 
 
-async def receiver(stream: AsyncStream[int]) -> None:
+async def listener(stream: AsyncStream[int]):
     with stream.listen() as listener:
         async for item in listener:
-            print(f"received: {item}")
+            print(item)
 
 
-# Start sender and receiver tasks
 async def main():
-    stream = AsyncStream()
-    await asyncio.gather(sender(stream), receiver(stream), receiver(stream))
+    stream = AsyncStream[int]()
+    await asyncio.gather(producer(stream), listener(stream), listener(stream))
 
 
-# asyncio.run(main(), debug=True)
-asyncio.run(main())
+asyncio.run(main(), debug=True)
