@@ -1,6 +1,8 @@
 # Streamx
 
-Streamx is an asyncio-compatible package for creating and consuming streams of data.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+The simple solution for sharing async data streams in Python.
 
 ## Installation
 
@@ -10,67 +12,66 @@ pip install streamx
 
 ## Usage
 
-### Creating a Stream
+### Creating a stream
 
 ```python
 from streamx import AsyncStream
 
-stream = AsyncStream()
+stream = AsyncStream[int]()
 ```
 
-### Pushing data into a Stream
+### Pushing items into a stream
 
-You can push data into a stream using the push method. This method is a coroutine, so you'll need to await it.
+You can push items into a stream using the push method. This method is a coroutine, so you'll need to await it. All listening tasks will receive each item.
 
 ```python
-await stream.push(data)
+await stream.push(1)
+await stream.push(2)
+await stream.push(3)
 ```
 
-### Consuming a Stream
+### Consuming a stream
 
-You can consume a stream using an async for loop.
+To consume a stream, you can use the listen method. This method returns an async iterator, so you can use it with an async for loop. Many tasks can listen to the same stream at the same time, and each task will receive each item pushed into the stream while it is listening.
 
 ```python
-async for data in stream:
-    do_something(data)
+with stream.listen() as listener:
+    async for item in listener:
+        print(item)
 ```
 
 ### Closing a Stream
 
-Once you're done pushing data into a stream, you should close it to signal to consumers that there will be no more data.
+Once you're done pushing data into a stream, you should close it to signal to consumers that there will be no more data. This signals to exit the async for loop, and prevents any new consumers from listening to the stream.
 
 ```python
 await stream.close()
 ```
 
-### Errors
-
-If you try to push data into a stream from the same task that's consuming it, a `RuntimeError` will be raised.
-
-Also, if you try to consume a stream with more than one consumer, a `RuntimeError` will be raised.
-
 ### Example
 
 ```python
 import asyncio
+
 from streamx import AsyncStream
 
+
 async def main():
-    stream = AsyncStream()
+    stream = AsyncStream[int]()
+
     async def producer():
-        for i in range(10):
+        for i in range(5):
             await stream.push(i)
+            await asyncio.sleep(1)
         await stream.close()
 
     async def consumer():
-        async for item in stream:
-            print(item)
-    asyncio.create_task(producer())
-    await consumer()
+        with stream.listen() as listener:
+            async for item in listener:
+                print(item)
 
-await main()
+    await asyncio.gather(producer(), consumer(), consumer())
+
+
+asyncio.run(main())
 ```
-
-## Contributing
-
-We welcome contributions and bug reports. Please open an issue or submit a pull request if you have something to add.
