@@ -65,12 +65,12 @@ async def main():
             await asyncio.sleep(1)
         await stream.close()
 
-    async def consumer():
+    async def listener():
         with stream.listen() as listener:
             async for item in listener:
                 print(item)
 
-    await asyncio.gather(producer(), consumer(), consumer())
+    await asyncio.gather(producer(), listener(), listener())
 
 
 asyncio.run(main())
