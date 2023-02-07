@@ -1,5 +1,5 @@
 import functools
-from typing import Any, Callable, Generic, TypeVar
+from typing import Any, Callable, Generic, TypeVar, cast
 
 T_in = TypeVar("T_in")
 T_out = TypeVar("T_out")
@@ -15,26 +15,19 @@ class Pipeable(Generic[T_in, T_out]):
     ) -> "Pipeable[T_in, V_out]":
         if isinstance(other, Pipeable):
             self._wrapped.extend(other._wrapped)
-            return self  # type: ignore
+            return cast("Pipeable[T_in, V_out]", self)
         # TODO: check if other is a function or callable
         self._wrapped.append(other)
-        return self  # type: ignore
+        return cast("Pipeable[T_in, V_out]", self)
 
     def __call__(self, arg: T_in) -> T_out:
-        return functools.reduce(lambda acc, func: func(acc), self._wrapped, arg)  # type: ignore
+        return cast(T_out, functools.reduce(lambda acc, func: func(acc), self._wrapped, arg))
 
 
-@Pipeable
-def foo(arg: str) -> int:
-    print("foo() running")
-    return 123
+def filter(filter):
+    async def _filter(stream):
+        async for item in stream:
+            if filter(item):
+                yield item
 
-
-@Pipeable
-def bar(arg: int) -> float:
-    print("bar() running")
-    return 0.123
-
-
-result = (foo | bar)("xyz")
-pass
+    return _filter
