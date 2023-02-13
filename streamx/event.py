@@ -29,7 +29,7 @@ class SharedEventListener(Generic[T]):
 
 
 class SharedEvent(Generic[T]):
-    def __init__(self, loop: asyncio.AbstractEventLoop | None = None):
+    def __init__(self, loop: asyncio.AbstractEventLoop | None = None) -> None:
         self.loop = loop or asyncio.get_event_loop()
         self._listeners: set[SharedEventListener[T]] = set()
 

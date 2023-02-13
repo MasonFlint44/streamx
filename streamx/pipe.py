@@ -1,3 +1,4 @@
+import builtins
 import functools
 from typing import Any, Callable, Generic, TypeVar, cast
 
@@ -6,28 +7,48 @@ T_out = TypeVar("T_out")
 V_out = TypeVar("V_out")
 
 
-class Pipeable(Generic[T_in, T_out]):
-    def __init__(self, wrapped: Callable[[T_in], T_out]) -> None:
-        self._wrapped: list[Callable[[Any], Any]] = [wrapped]
+class AsyncPipeline:
+    def __init__(self, source=None):
+        self.source = source
 
-    def __or__(
-        self, other: Callable[[T_out], V_out] | "Pipeable[T_out, V_out]"
-    ) -> "Pipeable[T_in, V_out]":
-        if isinstance(other, Pipeable):
-            self._wrapped.extend(other._wrapped)
-            return cast("Pipeable[T_in, V_out]", self)
-        # TODO: check if other is a function or callable
-        self._wrapped.append(other)
-        return cast("Pipeable[T_in, V_out]", self)
+    def __or__(self, operator):
+        if not self.source:
+            return AsyncPipeline(operator)
 
-    def __call__(self, arg: T_in) -> T_out:
-        return cast(T_out, functools.reduce(lambda acc, func: func(acc), self._wrapped, arg))
+        async def pipe(source):
+            async for value in operator(source):
+                yield value
+
+        return AsyncPipeline(pipe(self.source))
+
+    def __call__(self, func):
+        return AsyncPipeline(func())
+
+    async def __aiter__(self):
+        if not self.source:
+            raise ValueError("Cannot iterate over an empty pipeline - provide a source first")
+        async for value in self.source:
+            yield value
 
 
-def filter(filter):
-    async def _filter(stream):
-        async for item in stream:
-            if filter(item):
-                yield item
+def filter(predicate):
+    @functools.wraps(filter)
+    async def _filter(source):
+        async for value in source:
+            if predicate(value):
+                yield value
 
     return _filter
+
+
+def range(start, stop=None, step=1):
+    if stop is None:
+        stop = start
+        start = 0
+
+    @functools.wraps(range)
+    async def _range():
+        for i in builtins.range(start, stop, step):
+            yield i
+
+    return _range()

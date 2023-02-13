@@ -1,5 +1,5 @@
 import asyncio
-from collections.abc import AsyncIterable, AsyncIterator
+from collections.abc import AsyncGenerator, AsyncIterable, AsyncIterator
 from contextlib import contextmanager
 from typing import Generic, Iterator, TypeVar
 
@@ -46,6 +46,7 @@ class AsyncStreamListener(Generic[T]):
 
 
 # TODO: should this queue up items if no one is listening?
+# TODO: should take async generator as optional constructor argument?
 class AsyncStream(Generic[T]):
     def __init__(self) -> None:
         self._consuming_tasks: list[asyncio.Task] = []
