@@ -10,7 +10,7 @@ async def generator_two(source):
 
 async def main():
     async for value in (
-        AsyncPipeline() | range(10) | filter(lambda x: x % 2 == 0) | generator_two
+        AsyncPipeline[int]() | range(10) | filter(lambda x: x % 2 == 0) | generator_two
     ):
         print(value)
 
