@@ -1,17 +1,15 @@
 import asyncio
 
-from streamx.pipe import AsyncPipeline, filter, range
+from streamx.pipe import filter, range
 
 
-async def generator_two(source):
+async def double(source):
     async for value in source:
         yield value * 2
 
 
 async def main():
-    async for value in (
-        AsyncPipeline[int]() | range(10) | filter(lambda x: x % 2 == 0) | generator_two
-    ):
+    async for value in (range(10) | filter(lambda x: x % 2 == 0) | double):
         print(value)
 
 
