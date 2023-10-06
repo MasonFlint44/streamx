@@ -8,20 +8,18 @@
     ],
     "python.testing.pytestPath": "~/.local/share/virtualenvs/streamx-Q-kLpKnL/bin/pytest",
     "python.testing.unittestEnabled": false,
-    "python.formatting.provider": "black",
-    "python.formatting.blackArgs": [
+    "black-formatter.args": [
         "--line-length",
         "100"
     ],
-    "python.linting.enabled": true,
-    "python.linting.pylintEnabled": true,
-    "python.linting.pylintPath": "~/.local/share/virtualenvs/streamx-Q-kLpKnL/bin/pylint",
-    "python.linting.pylintArgs": [
-        "--init-hook",
-        "import sys; sys.path.append('.')",
+    "pylint.args": [
         "--disable=missing-module-docstring",
         "--disable=missing-class-docstring",
         "--disable=missing-function-docstring"
+    ],
+    "isort.args": [
+        "--profile",
+        "black"
     ],
     "[python]": {
         "editor.formatOnSave": true,
@@ -36,5 +34,6 @@
         "**/.coverage": true,
         "**/.cache": true,
         "**/.git": true,
-    }
+    },
+    "python.terminal.activateEnvInCurrentTerminal": true,
 }

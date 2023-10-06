@@ -3,7 +3,12 @@ from collections.abc import AsyncIterable, AsyncIterator
 from contextlib import contextmanager
 from typing import Generic, Iterator, TypeVar
 
-from . import SharedEvent, SharedEventListener, StreamClosedError, StreamShortCircuitError
+from . import (
+    SharedEvent,
+    SharedEventListener,
+    StreamClosedError,
+    StreamShortCircuitError,
+)
 
 T = TypeVar("T")
 

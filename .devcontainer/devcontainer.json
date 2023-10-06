@@ -1,14 +1,10 @@
 {
 	"name": "streamx",
-	"image": "mcr.microsoft.com/vscode/devcontainers/python",
-	"remoteEnv": {
-		"PYENV_VERSION": "3.11.1"
-	},
+	"image": "mcr.microsoft.com/vscode/devcontainers/python:3.12",
 	"customizations": {
 		"vscode": {
 			"extensions": [
 				"njpwerner.autodocstring",
-				"bungcip.better-toml",
 				"donjayamanne.githistory",
 				"GitHub.copilot",
 				"GitHub.copilot-labs",
@@ -17,8 +13,14 @@
 				"Gruntfuggly.todo-tree",
 				"ms-python.python",
 				"DavidAnson.vscode-markdownlint",
-				"shd101wyy.markdown-preview-enhanced"
+				"shd101wyy.markdown-preview-enhanced",
+				"ms-python.pylint",
+				"ms-python.black-formatter",
+				"ms-python.isort",
+				"tamasfe.even-better-toml"
 			]
 		}
-	}
+	},
+	"remoteUser": "vscode",
+	"postCreateCommand": "pipenv install --dev"
 }
