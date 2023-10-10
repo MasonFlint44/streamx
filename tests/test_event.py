@@ -45,9 +45,6 @@ async def test_shared_event_share():
     # Test that the `share` method pushes the result of the coroutine to all listeners
     event = SharedEvent()
 
-    async def coro():
-        return "value"
-
     results = []
 
     async def listener(event: SharedEvent, results: list):
@@ -65,7 +62,7 @@ async def test_shared_event_share():
     await asyncio.sleep(0)
 
     # Share the result of the coroutine
-    await event.share(coro())
+    await event.share("value")
 
     # Wait for all listeners to finish
     await asyncio.gather(*tasks)
@@ -105,13 +102,13 @@ async def test_share_listen_and_wait():
     await asyncio.gather(*[event.wait() for event in listeners_started])
 
     # Send events
-    value = await event.share(queue.get())
+    value = await event.share(await queue.get())
     assert value == "hello world"
 
-    value = await event.share(queue.get())
+    value = await event.share(await queue.get())
     assert value == "another one"
 
-    value = await event.share(queue.get())
+    value = await event.share(await queue.get())
     assert value == "dj khaled"
 
     # Wait for receivers to finish

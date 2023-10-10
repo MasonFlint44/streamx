@@ -30,23 +30,27 @@ class SharedEventListener(Generic[T]):
 
 class SharedEvent(Generic[T]):
     def __init__(self, loop: asyncio.AbstractEventLoop | None = None):
-        self.loop = loop or asyncio.get_event_loop()
+        self._loop = loop or asyncio.get_event_loop()
         self._listeners: set[SharedEventListener[T]] = set()
 
     @contextmanager
     def listen(self) -> Iterator[SharedEventListener[T]]:
-        listener = None
+        listener = SharedEventListener(self._loop)
+        self._listeners.add(listener)
         try:
-            listener = SharedEventListener(self.loop)
-            self._listeners.add(listener)
             yield listener
         finally:
-            if listener:
-                self._listeners.remove(listener)
+            self._listeners.remove(listener)
 
-    async def share(self, coro: ...) -> T:
-        value: T = await coro
-        await asyncio.gather(*[listener.ready.wait() for listener in self._listeners])
-        for listener in self._listeners:
-            listener.push(value)
-        return value
+    async def share(self, item: T) -> T:
+        # TODO: document why we need to yield to the event loop here
+        # yield to the event loop
+        await asyncio.sleep(0)
+
+        async def push_to_listener(listener: SharedEventListener) -> None:
+            await listener.ready.wait()
+            listener.push(item)
+
+        await asyncio.gather(*(push_to_listener(listener) for listener in self._listeners))
+
+        return item

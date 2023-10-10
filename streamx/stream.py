@@ -15,6 +15,8 @@ T = TypeVar("T")
 # TODO: push_many()?
 # TODO: push_nowait()?
 
+# TODO: Could we pull the ShortCircuit logic out into a StreamManager class or something to optimize the common case?
+
 
 class AsyncStreamIterator(AsyncIterator[T], Generic[T], AsyncIterable[T]):
     def __init__(self, event_listener: SharedEventListener[T]) -> None:
@@ -23,7 +25,7 @@ class AsyncStreamIterator(AsyncIterator[T], Generic[T], AsyncIterable[T]):
     async def __anext__(self) -> T:
         item = await self._event_listener.wait()
         if item is StopAsyncIteration:
-            raise StopAsyncIteration
+            raise item  # type: ignore
         return item
 
 
@@ -69,22 +71,21 @@ class AsyncStream(Generic[T]):
     async def push(self, item: T) -> None:
         if self._closed:
             raise StreamClosedError("Can't push item into a closed stream.")
-        current_task = asyncio.current_task()
-        if current_task in self._consuming_tasks:
+        if self._is_current_task_consuming():
             raise StreamShortCircuitError(
                 "Can't push an item while the task is listening to this stream."
             )
-        await self._event.share(asyncio.sleep(0, item))
+        await self._event.share(item)
 
     async def close(self) -> None:
         if self._closed:
             return
         try:
             await self.push(StopAsyncIteration)  # type: ignore
-        except StreamShortCircuitError:
+        except StreamShortCircuitError as e:
             raise StreamShortCircuitError(
                 "Can't close a stream from a task that is listening to it."
-            ) from None
+            ) from e
         self._closed = True
         for listener in self._listeners:
             listener.close()
@@ -93,21 +94,29 @@ class AsyncStream(Generic[T]):
     def listen(self) -> Iterator[AsyncStreamListener[T]]:
         if self._closed:
             raise StreamClosedError("Can't listen to a closed stream.")
-        current_task = asyncio.current_task()
-        if current_task in self._consuming_tasks:
+        if self._is_current_task_consuming():
             raise StreamShortCircuitError("Task is already listening to this stream.")
 
         listener = None
         try:
             with self._event.listen() as event_listener:
                 listener = AsyncStreamListener(event_listener)
-                self._listeners.add(listener)
-                if listener.current_task:
-                    self._consuming_tasks.append(listener.current_task)
+                self._add_listener(listener)
                 yield listener
         finally:
             if listener:
                 listener.close()
-                self._listeners.remove(listener)
-                if listener.current_task:
-                    self._consuming_tasks.remove(listener.current_task)
+                self._remove_listener(listener)
+
+    def _add_listener(self, listener: AsyncStreamListener[T]) -> None:
+        self._listeners.add(listener)
+        if listener.current_task:
+            self._consuming_tasks.append(listener.current_task)
+
+    def _remove_listener(self, listener: AsyncStreamListener[T]) -> None:
+        self._listeners.remove(listener)
+        if listener.current_task:
+            self._consuming_tasks.remove(listener.current_task)
+
+    def _is_current_task_consuming(self) -> bool:
+        return asyncio.current_task() in self._consuming_tasks
