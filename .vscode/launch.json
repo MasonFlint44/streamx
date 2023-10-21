@@ -18,7 +18,8 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": false,
-            "autoReload": { "enable": true }
+            "autoReload": { "enable": true },
+            "env": { "PYTHONPATH": "${workspaceFolder}" }
         },
         {
             "name": "Python: Debug Test File",
@@ -29,6 +30,7 @@
             "justMyCode": false,
             "purpose": ["debug-test"],
             "autoReload": { "enable": true },
+            "env": { "PYTHONPATH": "${workspaceFolder}" }
         }
     ]
 }

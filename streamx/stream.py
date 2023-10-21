@@ -68,6 +68,7 @@ class AsyncStream(Generic[T]):
     def closed(self) -> bool:
         return self._closed
 
+    # TODO: what if we make this synchronous and use create_task or something? Could we get rid of the ShortCircuit logic?
     async def push(self, item: T) -> None:
         if self._closed:
             raise StreamClosedError("Can't push item into a closed stream.")

@@ -7,7 +7,6 @@ async def producer(stream: AsyncStream[int]):
     for i in range(5):
         await stream.push(i)
         await asyncio.sleep(1)
-    await stream.close()
 
 
 async def listener(stream: AsyncStream[int]):
@@ -17,8 +16,15 @@ async def listener(stream: AsyncStream[int]):
 
 
 async def main():
+    # TODO: could use context manager that closes stream on exit
     stream = AsyncStream[int]()
-    await asyncio.gather(producer(stream), listener(stream), listener(stream))
+
+    # start the listeners
+    asyncio.create_task(listener(stream))
+    asyncio.create_task(listener(stream))
+
+    await producer(stream)
+    await stream.close()
 
 
 asyncio.run(main(), debug=True)

@@ -81,7 +81,7 @@ async def test_share_listen_and_wait():
         with event.listen() as listener:
             started.set()
             for _ in range(message_count):
-                value = await listener.wait()
+                _ = await listener.wait()
 
     queue = asyncio.Queue()
     event: SharedEvent[str] = SharedEvent()

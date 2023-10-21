@@ -285,11 +285,15 @@ async def test_backpressure():
                 consumed_count += 1
                 await asyncio.sleep(slow_consumer_duration)
 
-    producer_duration, _, _ = await asyncio.gather(
-        producer(),
-        fast_consumer(),
-        slow_consumer(),
-    )
+    asyncio.create_task(fast_consumer())
+    asyncio.create_task(slow_consumer())
+
+    # TODO: below indicates a need for a better way to register consumers
+    # Without this, the items will all get pushed before the consumers start listening
+    await asyncio.sleep(0)
+
+    producer_duration = await producer()
+
     # ensure both consumers have consumed all items
     assert consumed_count == item_count * 2
     assert producer_duration >= (item_count - 1) * slow_consumer_duration

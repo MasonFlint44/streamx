@@ -43,9 +43,8 @@ class SharedEvent(Generic[T]):
             self._listeners.remove(listener)
 
     async def share(self, item: T) -> T:
-        # TODO: document why we need to yield to the event loop here
-        # yield to the event loop
-        await asyncio.sleep(0)
+        # yield to the event loop to ensure any new listeners have a chance to start
+        # await asyncio.sleep(0)
 
         async def push_to_listener(listener: SharedEventListener) -> None:
             await listener.ready.wait()
