@@ -80,7 +80,7 @@ async def consumer(stream: AsyncStream[int]):
 
 async def main():
     stream = AsyncStream[int]()
-    await asyncio.gather(producer(stream), consumer(stream))
+    await asyncio.gather(consumer(stream), producer(stream))
 
 asyncio.run(main())
 ```
