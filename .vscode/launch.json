@@ -3,7 +3,7 @@
     "configurations": [
         {
             "name": "Python: Run Demo Sandbox",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/demo/sandbox.py",
             "console": "integratedTerminal",
@@ -13,7 +13,7 @@
         },
         {
             "name": "Python: Current File",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
@@ -22,7 +22,7 @@
         },
         {
             "name": "Python: Debug Test File",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
