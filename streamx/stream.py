@@ -1,122 +1,63 @@
 import asyncio
-from collections.abc import AsyncIterable, AsyncIterator
-from contextlib import contextmanager
-from typing import Generic, Iterator, TypeVar
-
-from . import (
-    SharedEvent,
-    SharedEventListener,
-    StreamClosedError,
-    StreamShortCircuitError,
-)
+from typing import Generic, TypeVar
 
 T = TypeVar("T")
 
-# TODO: push_many()?
-# TODO: push_nowait()?
 
-# TODO: Could we pull the ShortCircuit logic out into a StreamManager class or something to optimize the common case?
-
-
-class AsyncStreamIterator(AsyncIterator[T], Generic[T], AsyncIterable[T]):
-    def __init__(self, event_listener: SharedEventListener[T]) -> None:
-        self._event_listener = event_listener
+class AsyncStreamIterator(Generic[T]):
+    def __init__(self, stream: "AsyncStream[T]") -> None:
+        self._stream = stream
+        self._ready = asyncio.Event()
 
     async def __anext__(self) -> T:
-        item = await self._event_listener.wait()
-        if item is StopAsyncIteration:
-            raise item  # type: ignore
-        return item
+        # signal that iteration is ready for next value
+        self._ready.set()
+        # get next value from future
+        result = await self._stream.future
+        if result is StopAsyncIteration:
+            raise StopAsyncIteration
+        # set future for next iteration
+        self._stream.set_future()
+        # await current future and return result
+        return result
+
+    async def wait_for_ready(self) -> None:
+        await self._ready.wait()
+        self._ready.clear()
 
 
-class AsyncStreamListener(Generic[T]):
-    def __init__(self, event_listener: SharedEventListener[T]) -> None:
-        self._event_listener = event_listener
-        self._current_task = asyncio.current_task()
-        self._closed = False
-
-    @property
-    def current_task(self) -> asyncio.Task | None:
-        return self._current_task
-
-    @property
-    def closed(self) -> bool:
-        return self._closed
-
-    def close(self) -> None:
-        self._closed = True
-
-    def __aiter__(self) -> AsyncStreamIterator[T]:
-        if self._closed:
-            raise StreamClosedError("Can't iterate over a closed stream.")
-        return AsyncStreamIterator(self._event_listener)
-
-
-# TODO: should this queue up items if no one is listening?
 class AsyncStream(Generic[T]):
     def __init__(self) -> None:
-        self._consuming_tasks: list[asyncio.Task] = []
-        self._closed: bool = False
-        self._event = SharedEvent[T]()
-        self._listeners = set[AsyncStreamListener[T]]()
+        self._future = asyncio.Future()
+        self._iterators = []
 
     @property
-    def listeners(self) -> set[AsyncStreamListener[T]]:
-        return self._listeners
+    def future(self) -> asyncio.Future:
+        return self._future
 
-    @property
-    def closed(self) -> bool:
-        return self._closed
+    def set_future(self) -> None:
+        if not self._future.done():
+            return
+        # set new future if current future is done
+        self._future = asyncio.Future()
 
-    async def push(self, item: T) -> None:
-        if self._closed:
-            raise StreamClosedError("Can't push item into a closed stream.")
-        if self._is_current_task_consuming():
-            raise StreamShortCircuitError(
-                "Can't push an item while the task is listening to this stream."
-            )
-        await self._event.share(item)
+    async def __aenter__(self) -> "AsyncStream[T]":
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        # close stream on exit
+        await self.close()
+
+    def __aiter__(self) -> AsyncStreamIterator[T]:
+        iterator = AsyncStreamIterator(self)
+        self._iterators.append(iterator)
+        return iterator
+
+    async def put(self, value: T) -> None:
+        # wait for all iterators to be ready for the next value
+        await asyncio.gather(*[iterator.wait_for_ready() for iterator in self._iterators])
+        self._future.set_result(value)
 
     async def close(self) -> None:
-        if self._closed:
-            return
-        try:
-            await self.push(StopAsyncIteration)  # type: ignore
-        except StreamShortCircuitError as e:
-            raise StreamShortCircuitError(
-                "Can't close a stream from a task that is listening to it."
-            ) from e
-        self._closed = True
-        for listener in self._listeners:
-            listener.close()
-
-    @contextmanager
-    def listen(self) -> Iterator[AsyncStreamListener[T]]:
-        if self._closed:
-            raise StreamClosedError("Can't listen to a closed stream.")
-        if self._is_current_task_consuming():
-            raise StreamShortCircuitError("Task is already listening to this stream.")
-
-        listener = None
-        try:
-            with self._event.listen() as event_listener:
-                listener = AsyncStreamListener(event_listener)
-                self._add_listener(listener)
-                yield listener
-        finally:
-            if listener:
-                listener.close()
-                self._remove_listener(listener)
-
-    def _add_listener(self, listener: AsyncStreamListener[T]) -> None:
-        self._listeners.add(listener)
-        if listener.current_task:
-            self._consuming_tasks.append(listener.current_task)
-
-    def _remove_listener(self, listener: AsyncStreamListener[T]) -> None:
-        self._listeners.remove(listener)
-        if listener.current_task:
-            self._consuming_tasks.remove(listener.current_task)
-
-    def _is_current_task_consuming(self) -> bool:
-        return asyncio.current_task() in self._consuming_tasks
+        await self.put(StopAsyncIteration)  # type: ignore
+        self._iterators.clear()
